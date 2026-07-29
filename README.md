@@ -7,7 +7,7 @@ A classic **Snake Game** built using **Python** with a graphical user interface 
 ## 📌 Features
 
 * 🎮 Classic Snake gameplay
-* 🖥️ Interactive GUI using Tkinter
+* 🖥️ Interactive GUI 
 * ⌨️ Keyboard controls (Arrow Keys)
 * 🍎 Random food generation
 * 📈 Live score display
