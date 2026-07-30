@@ -1,11 +1,13 @@
 # import required modules
 import turtle
-import time
 import random
 
-delay = 0.1
+# Initial game speed (60ms = ~16.6 updates per second for super snappy responsiveness)
+INITIAL_DELAY = 90
+delay_ms = INITIAL_DELAY
 score = 0
 high_score = 0
+can_change_direction = True
 
 # Creating a window screen
 wn = turtle.Screen()
@@ -42,25 +44,33 @@ pen.goto(0, 250)
 pen.write("Score : 0  High Score : 0", align="center", font=("candara", 24, "bold"))
 
 
-# assigning key directions
+# assigning key directions with instant responsiveness check
 def goup():
-	if head.direction != "down":
+	global can_change_direction
+	if head.direction != "down" and can_change_direction:
 		head.direction = "up"
+		can_change_direction = False
 
 
 def godown():
-	if head.direction != "up":
+	global can_change_direction
+	if head.direction != "up" and can_change_direction:
 		head.direction = "down"
+		can_change_direction = False
 
 
 def goleft():
-	if head.direction != "right":
+	global can_change_direction
+	if head.direction != "right" and can_change_direction:
 		head.direction = "left"
+		can_change_direction = False
 
 
 def goright():
-	if head.direction != "left":
+	global can_change_direction
+	if head.direction != "left" and can_change_direction:
 		head.direction = "right"
+		can_change_direction = False
 
 
 def move():
@@ -81,122 +91,113 @@ def move():
 # Listen for keyboard input
 wn.listen()
 
-# Register movement controls (Arrow keys and W/A/S/D case-insensitive)
+# Bind movement controls cleanly using onkeypress
 for k in ["w", "W", "Up"]:
-	wn.onkey(goup, k)
 	wn.onkeypress(goup, k)
 
 for k in ["s", "S", "Down"]:
-	wn.onkey(godown, k)
 	wn.onkeypress(godown, k)
 
 for k in ["a", "A", "Left"]:
-	wn.onkey(goleft, k)
 	wn.onkeypress(goleft, k)
 
 for k in ["d", "D", "Right"]:
-	wn.onkey(goright, k)
 	wn.onkeypress(goright, k)
 
 segments = []
 
-# Main Gameplay Loop
-try:
-	while True:
+
+def reset_game():
+	global score, delay_ms, can_change_direction
+	head.goto(0, 0)
+	head.direction = "Stop"
+	can_change_direction = True
+
+	colors = random.choice(['red', 'green', 'yellow', 'orange', 'cyan'])
+	shapes = random.choice(['square', 'circle'])
+	food.color(colors)
+	food.shape(shapes)
+
+	for segment in segments:
+		segment.hideturtle()
+		segment.goto(1000, 1000)
+	segments.clear()
+
+	score = 0
+	delay_ms = INITIAL_DELAY
+	pen.clear()
+	pen.write("Score : {}  High Score : {}".format(score, high_score), align="center", font=("candara", 24, "bold"))
+
+
+# Main Gameplay Loop via ontimer
+def game_loop():
+	global score, high_score, delay_ms, can_change_direction
+
+	try:
 		wn.update()
+	except turtle.Terminator:
+		return
 
-		# Check collision with border
-		if head.xcor() > 290 or head.xcor() < -290 or head.ycor() > 290 or head.ycor() < -290:
-			time.sleep(1)
-			head.goto(0, 0)
-			head.direction = "Stop"
+	# Reset direction lock so next keypress is registered immediately for next tick
+	can_change_direction = True
 
-			# Reset food
-			colors = random.choice(['red', 'green', 'yellow', 'orange', 'cyan'])
-			shapes = random.choice(['square', 'circle'])
-			food.color(colors)
-			food.shape(shapes)
+	# Check collision with border
+	if head.xcor() > 290 or head.xcor() < -290 or head.ycor() > 290 or head.ycor() < -290:
+		reset_game()
 
-			# Clear body segments
-			for segment in segments:
-				segment.hideturtle()
-				segment.goto(1000, 1000)
-			segments.clear()
+	# Check collision with food
+	elif head.distance(food) < 20:
+		x = random.randint(-270, 270)
+		y = random.randint(-270, 270)
+		food.goto(x, y)
 
-			# Reset score and delay
-			score = 0
-			delay = 0.1
-			pen.clear()
-			pen.write("Score : {}  High Score : {}".format(score, high_score), align="center", font=("candara", 24, "bold"))
+		colors = random.choice(['red', 'green', 'yellow', 'orange', 'cyan'])
+		shapes = random.choice(['square', 'triangle', 'circle'])
+		food.color(colors)
+		food.shape(shapes)
 
-		# Check collision with food
-		if head.distance(food) < 20:
-			x = random.randint(-270, 270)
-			y = random.randint(-270, 270)
-			food.goto(x, y)
+		new_segment = turtle.Turtle()
+		new_segment.speed(0)
+		new_segment.shape("square")
+		new_segment.color("orange")
+		new_segment.penup()
+		segments.append(new_segment)
 
-			# Change food color/shape on eating
-			colors = random.choice(['red', 'green', 'yellow', 'orange', 'cyan'])
-			shapes = random.choice(['square', 'triangle', 'circle'])
-			food.color(colors)
-			food.shape(shapes)
+		# Gradually speed up game
+		delay_ms = max(25, delay_ms - 1)
 
-			# Adding new segment
-			new_segment = turtle.Turtle()
-			new_segment.speed(0)
-			new_segment.shape("square")
-			new_segment.color("orange")
-			new_segment.penup()
-			segments.append(new_segment)
+		score += 10
+		if score > high_score:
+			high_score = score
+		pen.clear()
+		pen.write("Score : {}  High Score : {}".format(score, high_score), align="center", font=("candara", 24, "bold"))
 
-			# Speed up game
-			delay -= 0.001
-			delay = max(0.01, delay)
+	# Move body segments
+	for index in range(len(segments) - 1, 0, -1):
+		x = segments[index - 1].xcor()
+		y = segments[index - 1].ycor()
+		segments[index].goto(x, y)
 
-			# Increase score
-			score += 10
-			if score > high_score:
-				high_score = score
-			pen.clear()
-			pen.write("Score : {}  High Score : {}".format(score, high_score), align="center", font=("candara", 24, "bold"))
+	if len(segments) > 0:
+		x = head.xcor()
+		y = head.ycor()
+		segments[0].goto(x, y)
 
-		# Move tail segments in reverse order
-		for index in range(len(segments) - 1, 0, -1):
-			x = segments[index - 1].xcor()
-			y = segments[index - 1].ycor()
-			segments[index].goto(x, y)
+	move()
 
-		# Move segment 0 to head position
-		if len(segments) > 0:
-			x = head.xcor()
-			y = head.ycor()
-			segments[0].goto(x, y)
+	# Check collision with body
+	for segment in segments:
+		if segment.distance(head) < 20:
+			reset_game()
+			break
 
-		move()
+	# Schedule next frame with faster tick rate
+	try:
+		wn.ontimer(game_loop, delay_ms)
+	except turtle.Terminator:
+		pass
 
-		# Check head collision with body segments
-		for segment in segments:
-			if segment.distance(head) < 20:
-				time.sleep(1)
-				head.goto(0, 0)
-				head.direction = "Stop"
 
-				colors = random.choice(['red', 'green', 'yellow', 'orange', 'cyan'])
-				shapes = random.choice(['square', 'circle'])
-				food.color(colors)
-				food.shape(shapes)
-
-				for seg in segments:
-					seg.hideturtle()
-					seg.goto(1000, 1000)
-				segments.clear()
-
-				score = 0
-				delay = 0.1
-				pen.clear()
-				pen.write("Score : {}  High Score : {}".format(score, high_score), align="center", font=("candara", 24, "bold"))
-				break
-
-		time.sleep(delay)
-except (turtle.Terminator, Exception):
-	pass
+# Start game loop and main event loop
+game_loop()
+wn.mainloop()
