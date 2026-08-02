@@ -58,7 +58,7 @@ Snake-Game/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/Snake-Game.git
+git clone https://github.com/utkarshx08/Snake-Game.git
 ```
 
 ### 2. Navigate to the project folder
